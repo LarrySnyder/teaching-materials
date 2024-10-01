@@ -1,0 +1,19 @@
+param num_resources := 3;
+param num_products := 4;
+
+param:	fixed_cost	var_cost	sales_price	sales_potential :=
+	1	100			10			22			100
+	2	150			10			30			75
+	3	50			40			18			140
+	4	100			30			45			60 ;
+
+param avail :=
+	1	400
+	2	600
+	3	300 ;
+
+param needs :
+		1	2	3	4	:=
+	1	4	1	0	2
+	2	0	2	3	2
+	3	1	1	1	1 ;

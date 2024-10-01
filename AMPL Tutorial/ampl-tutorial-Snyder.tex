@@ -1,0 +1,1588 @@
+% Slides by Lawrence V. Snyder, Lehigh University
+
+\input{macros}		% include headers and macros
+
+% TITLE PAGE
+
+\title{AMPL Tutorial}
+\author{Prof.~Larry Snyder \\ Lehigh University}
+\date{1/22/20}
+
+
+\begin{document}
+
+%\lstset{language=Pascal}
+
+\frame[plain]{\titlepage}
+
+% OUTLINE SLIDE
+
+\section<presentation>*{Outline}
+
+\frame
+{
+  \frametitle{Outline}
+  \tableofcontents[hidesubsections]
+}
+
+\AtBeginSection[]
+{
+  \frame
+  {
+    \frametitle{Outline}
+    \tableofcontents[current,hidesubsections]
+  }
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Introduction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introduction}
+
+\frame
+{
+	\frametitle{AMPL's Role}
+	
+	\begin{columns}
+	
+	\column[t]{1in}
+	
+	We write optimization models like this:
+
+	\vspace{-1em}
+	
+	{\scriptsize
+	\begin{align*}
+	\text{maximize} \quad & \sum_{j=1}^n p_jx_j \\
+	\text{subject to} \quad & \sum_{j=1}^n a_{ij}x_j \le b_i \quad \forall i \\
+		& x_j \le d_j\delta_j \quad \forall j \\
+		& x_j \ge 0 \quad \forall j \\
+		& \delta_j \in \{0,1\} \quad \forall j
+	\end{align*}
+	}
+
+	\column[t]{1in}
+	
+	\onslide<3-> {
+	AMPL does the translating:
+	
+	\vspace{3em}
+	
+	\begin{center}
+	\begin{tikzpicture}
+	
+	\node[draw=black,fill=none] (ampl) {\includegraphics[width=0.5in]{AMPL-logo.jpg}};
+	\draw[->] ($ (ampl.west) +(-0.25in,0) $) -- (ampl.west);
+	\draw[->] (ampl.east) -- ($ (ampl.east) +(0.25in,0) $);
+	
+	\end{tikzpicture}
+	\end{center}
+	}
+	
+	\column[t]{1in}
+	
+	\onslide<2-> {
+	The solver (algorithm) needs them to look like this:
+	
+	{\tiny
+	\begin{align*}
+	c & = [2.5, 2.0, 1.7, 0, 0, 0] \\
+	A & = \left[\begin{matrix} 1 & 2 & 1 & 0 & 0 & 0 \\
+						0 & 1 & 3 & 0 & 0 & 0 \\
+						1 & 0 & 0 & -30 & 0 & 0 \\
+						0 & 1 & 0 & 0 & -10 & 0 \\
+						0 & 0 & 1 & 0 & 0 & -15 \end{matrix}\right] \\
+	b & = \left[\begin{matrix} 15 & 20 & 0 & 0 & 0 \end{matrix} \right]'
+	\end{align*}
+	}
+	}
+
+	\end{columns}
+	
+}
+
+
+\begin{frame}[fragile] % to allow code listings in slides -- see https://tex.stackexchange.com/a/130131/63847
+
+	\frametitle{AMPL Blends Algebraic Notation and Computer Code}
+	
+	\begin{lstlisting}
+param num_resources;					# number of resources (M)
+param num_products;						# number of products (N)
+
+set RESOURCES := 1..num_resources;		# set of resources
+set PRODUCTS := 1..num_products;		# set of products
+
+param fixed_cost {PRODUCTS};			# fixed cost (K_j)
+param var_cost {PRODUCTS};				# variable cost (C_j)
+param sales_price {PRODUCTS};			# sales price (p_j)
+param sales_potential {PRODUCTS};		# sales potential (d_j)
+param avail {RESOURCES};				# resource availability (b_i)
+param needs {RESOURCES, PRODUCTS};		# num units of i needed for j (a_ij)
+
+var ProduceAmt {PRODUCTS} >= 0;			# num units of product to produce (x_j)
+var Produce {PRODUCTS} binary;			# produce product? (delta_j)
+
+maximize Profit:
+	sum {j in PRODUCTS} sales_price[j] * ProduceAmt[j] 
+	- sum {j in PRODUCTS} (fixed_cost[j] * Produce[j] 
+		+ var_cost[j] * ProduceAmt[j]);
+	
+subject to Supply {i in RESOURCES}:
+	sum {j in PRODUCTS} needs[i,j] * Produce[j] <= avail[i];
+	
+subject to LinkingAndSalesPotential {j in PRODUCTS}:
+	Produce[j] <= sales_potential[j] * Produce[j];
+	\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Some Basics}
+	
+	\bit
+	\item AMPL is case-sensitive
+	\item AMPL ignores whitespace
+	\item Your model will go into a text file (\myinline{.mod} and/or \myinline{.dat})
+	\item You will type commands like \myinline{solve} at the \myinline{ampl:} prompt
+	\item Comments are denoted by a number sign (\myinline{\#}) 
+	\item Every line must end with a  semicolon (\myinline{;})
+	\eit
+
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%
+% CENTRE COUNTY: EXPLICIT
+%%%%%%%%%%%%%%%%%%%%%
+
+\section{The Centre County Problem: Explicit Form}
+
+\begin{frame}[fragile]
+
+	\frametitle{Centre County Problem}
+
+	\bit
+	\item Centre County, PA is considering  4 potential community development projects:
+	
+		\vspace{0.5em}
+		\centerline{\footnotesize
+		\begin{tabular}{lccc}
+		Project & Daily Usage & Cost & Land Space (acres) \\
+		\hline
+		Park & 600 & \$50,000 & 8 \\
+		Basketball court & 100 & \$20,000 & 0 \\
+		Recreation center & 300 & \$150,000 & 4 \\
+		Swimming pool & 500 & \$70,000 & 5 \\
+		\hline
+		\end{tabular}
+		}
+		\vspace{0.5em}
+	
+	\item Basketball court will be built in park
+		\bit
+		\item No space needed
+		\item But cannot build unless build park
+		\eit
+	\eit
+\end{frame}
+	
+\begin{frame}[fragile]
+
+	\frametitle{Centre County Problem}
+	
+	\bit
+	\item \$200,000 from state
+	\item 15 acres available
+	\item Goal: select projects to max daily usage s.t.\ budget and land constraints	
+	\eit
+	
+	\vspace{1em}
+	
+	{\small {\em Source}: Ravindran, Griffin, and Prabhu, {\em Service Systems Engineering and Management}, CRC Press, 2018.}
+	
+\end{frame}
+
+	
+
+\begin{frame}[fragile]
+
+	\frametitle{Centre County Problem}
+	
+	\footnotesize
+	\beq \setlength{\arraycolsep}{0.15em} 
+	\begin{array}{lrcrcrcrcl@{\qquad}c}
+		\shortmax & Z = 600x_1 & + & 100x_2 & + & 300x_3 & + & 500x_4 & & & \\
+		\shortst & 50x_1 & + & 20x_2 & + & 150x_3 & + & 70x_4 & \le & 200 & \\
+		& 8x_1 & & & + & 4x_3 & + & 5x_4 & \le & 15 & \\
+		 & x_1 & , & x_2 & , & x_3 & , & x_4 & \le & 1 \\
+		 & x_1 & , & x_2 & , & x_3 & , & x_4 & \ge & 0 
+	\end{array} 
+	\eeq
+	\normalsize
+	
+	\bit
+	\item (For now, we'll allow the decision variables to be continuous and ignore the ``if basketball, then park'' constraint)
+	\item Open AMPL and create a file called \myinline{centre.mod}
+	\item Type the following:
+	\eit
+	
+\begin{lstlisting}
+var x1 >= 0, <= 1;
+var x2 >= 0, <= 1;
+var x3 >= 0, <= 1;
+var x4 >= 0, <= 1;
+
+maximize Profit: 600 * x1 + 100 * x2 + 300 * x3 + 500 * x4;
+
+subject to Budget: 50 * x1 + 20 * x2 + 150 * x3 + 70 * x4 <= 200;
+
+subject to Space: 8 * x1 + 4 * x3 + 5 * x4 <= 15;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Centre County Problem}
+		
+\begin{lstlisting}
+var x1 >= 0, <= 1;
+var x2 >= 0, <= 1;
+var x3 >= 0, <= 1;
+var x4 >= 0, <= 1;
+
+maximize Profit: 600 * x1 + 100 * x2 + 300 * x3 + 500 * x4;
+
+subject to Budget: 50 * x1 + 20 * x2 + 150 * x3 + 70 * x4 <= 200;
+
+subject to Space: 8 * x1 + 4 * x3 + 5 * x4 <= 15;
+\end{lstlisting}
+
+	\bit
+	\item Notice that:
+		\bit
+		\item Every line ends with a semicolon
+		\item Decision variables are declared using \myinline{var}
+		\item The objective function is declared using \myinline{maximize} (or \myinline{minimize})
+		\item Constraints are declared using \myinline{subject to} (or shorten to \myinline{subj to})
+		\item The objective function and constraints each get a name (\myinline{Profit}, \myinline{Budget}, \myinline{Space}); names must be unique
+		\eit
+	\eit
+	
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Centre County Problem} 
+
+\begin{lstlisting}
+var x1 >= 0, <= 1;
+var x2 >= 0, <= 1;
+var x3 >= 0, <= 1;
+var x4 >= 0, <= 1;
+
+maximize Profit: 600 * x1 + 100 * x2 + 300 * x3 + 500 * x4;
+
+subject to Budget: 50 * x1 + 20 * x2 + 150 * x3 + 70 * x4 <= 200;
+
+subject to Space: 8 * x1 + 4 * x3 + 5 * x4 <= 15;
+\end{lstlisting}
+
+	\bit
+	\item At the \myinline{ampl:} prompt, type:
+	\eit
+	
+\begin{lstlisting}
+ampl: model centre.mod;			<-- tells AMPL which model you want to solve
+ampl: option solver cplex;		<-- tells AMPL which solver you want to use
+ampl: solve;					<-- tells AMPL to solve it!
+\end{lstlisting}
+
+	\bit
+	\item You should see:
+	\eit
+	
+\begin{lstlisting}
+CPLEX 12.8.0.0: optimal solution; objective 1320
+1 dual simplex iterations (0 in phase I)
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Congrats, You Just Solved Your First AMPL Model!}
+	
+\begin{lstlisting}
+CPLEX 12.8.0.0: optimal solution; objective 1320
+1 dual simplex iterations (0 in phase I)
+\end{lstlisting}
+
+	\bit
+	\item \myinline{objective 1320} means the optimal objective function value is 1320
+	\item Let's find out the values of the decision variables
+	\item We ask AMPL for values using the \myinline{display} command:
+	\eit
+
+\begin{lstlisting}
+ampl: display x1, x2, x3, x4;
+x1 = 1
+x2 = 1
+x3 = 0.4
+x4 = 1
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Binary Variables}
+	
+	\bit
+	\item Now let's make the variables binary instead of continuous
+	\item Replace \myinline{>= 0, <= 1} with \myinline{binary}:
+	\eit
+	
+\begin{lstlisting}
+var x1 binary;
+var x2 binary;
+var x3 binary;
+var x4 binary;
+\end{lstlisting}
+
+	\bit
+	\item Let's also add the ``if basketball, then park'' constraint:
+	\eit
+	
+\begin{lstlisting}
+subject to IfBasketballThenPark: x2 <= x1;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Binary Variables}
+	
+	\bit
+	\item When we change the \myinline{.mod} file, we must tell AMPL to \myinline{reset}
+	\item Then re-load the model
+	\item Then re-solve
+	\item (We don't need to specify the solver again)
+	\eit
+
+\begin{lstlisting}
+ampl: reset;
+ampl: model centre.mod;
+ampl: solve;
+CPLEX 12.8.0.0: optimal integer solution; objective 1200
+0 MIP simplex iterations
+0 branch-and-bound nodes
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Binary Variables}
+	
+\begin{lstlisting}
+ampl: reset;
+ampl: model centre.mod;
+ampl: solve;
+CPLEX 12.8.0.0: optimal integer solution; objective 1200
+0 MIP simplex iterations
+0 branch-and-bound nodes
+\end{lstlisting}
+
+	\bit
+	\item Again, let's find out the values of the variables:
+	\eit
+	
+\begin{lstlisting}
+ampl: display x1, x2, x3, x4;
+x1 = 1
+x2 = 1
+x3 = 0
+x4 = 1
+\end{lstlisting}
+
+	\bit
+	\item Yay, they're binary!
+	\item (By the way, you can use the $\uparrow$ and $\downarrow$ keys to scroll through earlier commands)
+	\eit
+
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%
+% CENTRE COUNTY: ALGEBRAIC
+%%%%%%%%%%%%%%%%%%%%%
+
+\section{The Centre County Problem: General Algebraic Form}
+
+\begin{frame}[fragile]
+
+	\frametitle{A More General Algebraic Approach}
+	
+	\bit
+	\item So far, so good
+	\item But: This format would be a big pain if lots of variables
+	\item The solution is to use {\bf sets} to index our {\bf parameters}, {\bf decision variables}, {\bf summations}, and {\bf constraints}
+	\item Let's omit the ``if basketball, then park'' constraint for now
+	\item Create a new file called \myinline{centrecounty.mod} that contains:
+	\eit
+
+\lstinputlisting[lastline=13]{centrecounty-slides.mod}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{A More General Algebraic Approach}
+	
+\lstinputlisting[lastline=13]{centrecounty-slides.mod}
+
+	\bit
+	\item Notice that:
+		\bit
+		\item Parameters and variables are indexed by the set; this is indicated with curly braces: \myinline{param usage \{PROJECTS\}}
+		\item In objective and constraints, use square brackets to index the parameters and variables: \myinline{usage[p]}
+		\item Text after the comment symbol (\myinline{\#}) is ignored
+		\item Summation indices are also indicated with curly braces: \myinline{sum \{j in PROJECTS\}}
+		\eit
+	\eit
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{But Wait---There Are No Numbers!}
+	
+\lstinputlisting[lastline=13]{centrecounty-slides.mod}
+
+	\bit
+	\item We need some way to provide the {\bf data} ({\bf sets} and {\bf parameter} values)
+	\item The data go into a \myinline{.dat} file
+	\item Separation of model and data is core to AMPL's philosophy
+	\eit
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{The Data File}
+	
+	\bit
+	\item The \myinline{.dat} file specifies the items in each {\bf set} and the values of each {\bf parameter}
+	\item Create a new file called \myinline{centrecounty.dat}:
+	\eit
+	
+\begin{lstlisting}
+set PROJECTS := park basketball rec pool;
+
+param usage :=
+	park		600
+	basketball	100
+	rec			300
+	pool		500 ;
+	
+param cost :=
+	park		50
+	basketball	20
+	rec			150
+	pool		70 ;
+	
+param space :=
+	park		8
+	basketball	0
+	rec			4
+	pool		5 ;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{The Data File}
+
+\begin{lstlisting}
+set PROJECTS := park basketball rec pool;
+
+param usage :=
+	park		600
+	basketball	100
+	rec			300
+	pool		500 ;
+	
+param cost :=
+	park		50
+	basketball	20
+	rec			150
+	pool		70 ;
+	
+param space :=
+	park		8
+	basketball	0
+	rec			4
+	pool		5 ;
+\end{lstlisting}
+
+	\bit
+	\item Notice that:
+		\bit
+		\item Lines still end with semicolons
+		\item Set elements can be strings (they can also be numbers)
+		\item Declarations use the \myinline{:=} symbol
+		\eit
+	\eit
+
+\end{frame}
+
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Solving the Revised Model}
+
+	\bit
+	\item Now let's solve the revised model
+	\eit
+	
+\begin{lstlisting}
+ampl: reset;
+ampl: model centrecounty.mod;
+ampl: data centrecounty.dat;			<-- tells AMPL which data you want to use
+ampl: solve;
+CPLEX 12.8.0.0: optimal integer solution; objective 1200
+0 MIP simplex iterations
+0 branch-and-bound nodes
+\end{lstlisting}
+
+	\bit
+	\item We can \myinline{display} decision variables, just like before, even if they are indexed by sets:
+	\eit
+	
+\begin{lstlisting}
+ampl: display Select;
+Select [*] :=
+basketball  1
+      park  1
+      pool  1
+       rec  0
+;
+\end{lstlisting}
+
+	\bit
+	\item It's the same solution as before---not surprising, since it's the same model (and data)
+	\eit
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Basketball Constraint}
+
+	\bit
+	\item Let's add the ``if basketball then park'' constraint back into the model
+	\item Note that {\bf set} elements that are strings must be enclosed in single quotes
+	\eit
+	
+\begin{lstlisting}
+subj to IfBasketballThenPark: Select['basketball'] <= Select['park'];
+\end{lstlisting}
+
+	\bit
+	\item (We already know that the solution will be the same, but let's solve it anyway)
+	\eit
+	
+\begin{lstlisting}
+ampl: reset;
+ampl: model centrecounty.mod;
+ampl: data centrecounty.dat;
+ampl: solve;
+CPLEX 12.8.0.0: optimal integer solution; objective 1200
+0 MIP simplex iterations
+0 branch-and-bound nodes
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{A More Compact Data Syntax}
+	
+	\bit
+	\item When several parameters have the same index set, we can combine them into one table:
+	\eit
+	
+\begin{lstlisting}
+set PROJECTS := park basketball rec pool;
+	
+param:		usage	cost	space :=
+park		600		50		8
+basketball	100		20		0
+rec			300		150		4
+pool		500		70		5 ;
+\end{lstlisting}
+
+	\bit
+	\item White space (tabbing, etc.)\ doesn't matter, but nice alignment makes the table easier to read
+	\pause
+	\item Try the new data format and re-solve the model
+	\item Did you get the same optimal solution?
+	\eit
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Right-Hand Sides as Parameters}
+	
+	\bit
+	\item The right-hand sides of our constraints are written as numbers
+	\item It's good practice  to avoid ``hard-coding'' {\em any} numbers in the \myinline{.mod} file
+	\item Instead, declare them as parameters:
+	\eit
+	
+\begin{lstlisting}
+param budget;				# available budget
+param land_avail;			# available land
+\end{lstlisting}
+
+	\bit
+	\item And replace the right-hand sides with those parameters:
+	\eit
+	
+\begin{lstlisting}
+subj to Budget: sum {j in PROJECTS} cost[j] * Select[j] <= budget;
+	
+subj to LandAvailable: sum {j in PROJECTS} space[j] * Select[j] <= land_avail;
+\end{lstlisting}
+
+	\bit
+	\item And declare the new parameters in the \myinline{.dat} file:
+	\eit
+	
+\begin{lstlisting}
+param budget := 200;
+param land_avail := 15;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Right-Hand Sides as Parameters}
+	
+	\bit
+	\item Let's solve the revised model:
+	\eit
+	
+\begin{lstlisting}
+ampl: reset;
+ampl: model centrecounty.mod;
+ampl: data centrecounty.dat;
+ampl: solve;
+CPLEX 12.8.0.0: optimal integer solution; objective 1200
+0 MIP simplex iterations
+0 branch-and-bound nodes
+ampl: display Select;
+Select [*] :=
+basketball  1
+      park  1
+      pool  1
+       rec  0
+;
+\end{lstlisting}
+
+	\bit
+	\item Yay.
+	\eit
+	
+\end{frame}
+
+
+
+
+\begin{frame}[fragile]
+
+	\frametitle{``For All'' Constraints}
+	
+	\bit
+	\item Suppose we want to add a constraint that says that the total spent on {\em each} project can be no more than 60:
+		\[ c_j x_j \le 60 \qquad \forall j\in P \]
+	\item To implement the ``for all,'' we {\em index the constraints}:
+	\eit	
+	
+\begin{lstlisting}
+subj to MaxSpendPerProject {j in PROJECTS}: cost[j] * Select[j] <= 60;
+\end{lstlisting}
+	
+	\pause
+	
+	\bit
+	\item Or better yet:
+	\eit
+	
+\begin{lstlisting}
+param max_spend;			# max spend per project
+...
+subj to MaxSpendPerProject {j in PROJECTS}: cost[j] * Select[j] <= max_spend;
+\end{lstlisting}
+
+	\bit
+	\item And in \myinline{centrecounty.dat}:
+	\eit
+
+\begin{lstlisting}
+param max_spend := 60;
+\end{lstlisting}
+	
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{``For All'' Constraints}
+	
+	\bit
+	\item Let's re-solve the model:
+	\eit	
+	
+\begin{lstlisting}
+ampl: reset;
+ampl: model centrecounty.mod;
+ampl: data centrecounty.dat;
+ampl: solve;
+CPLEX 12.8.0.0: optimal integer solution; objective 700
+0 MIP simplex iterations
+0 branch-and-bound nodes
+ampl: display Select;
+Select [*] :=
+basketball  1
+      park  1
+      pool  0
+       rec  0
+;
+\end{lstlisting}
+	
+\end{frame}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%
+% ERRORS
+%%%%%%%%%%%%%%%%%%%%%
+
+\section{Things That Can Go Wrong}
+
+\begin{frame}[fragile]
+
+	\frametitle{Dangling Subscripts}
+	
+	\bit
+	\item AMPL is {\em great} at recognizing dangling subscripts!
+	\eit
+	
+\begin{lstlisting}
+set PROJECTS;					# set of projects (P)
+
+param usage {PROJECTS};			# usage for project j (u_j)
+param cost {PROJECTS};			# cost for project j (c_j)
+param space {PROJECTS};			# space for project j (s_j)
+
+var Select {PROJECTS} binary; 	# select project j? (x_j)
+
+maximize TotalUsage: usage[j] * Select[j];		<-- no sum!!!
+	
+...
+\end{lstlisting}
+
+	\bit
+	\item Then:
+	\eit
+
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+
+centrecounty.mod, line 9 (offset 281):
+	j is not defined
+context:  maximize TotalUsage:  >>> usage[j] <<<  * Select[j];
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Dangling Subscripts}
+	
+	\bit
+	\item Or:
+	\eit
+	
+\begin{lstlisting}
+subj to MaxSpendPerProject: cost[j] * Select[j] <= max_spend;		<-- no for-all!!!
+\end{lstlisting}
+
+
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+
+centrecounty.mod, line 23 (offset 722):
+	j is not defined
+context:  subj to MaxSpendPerProject:  >>> cost[j] <<<  * Select[j] <= max_spend;
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Same Index in Sum and For-All}
+	
+	\bit
+	\item AMPL also complains if you use the same index in a sum and a for-all:
+	\eit
+	
+\begin{lstlisting}
+subj to MaxSpendPerProject {j in PROJECTS}: 
+	sum {j in PROJECTS} cost[j] * Select[j] <= max_spend; <-- j in sum and for-all!!!
+\end{lstlisting}
+
+
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+
+centrecounty.mod, line 24 (offset 747):
+	syntax error
+context:  sum {j  >>> in  <<< PROJECTS} cost[j] * Select[j] <= max_spend;
+\end{lstlisting}
+
+	\bit
+	\item (The \myinline{syntax error} isn't that helpful, but the \myinline{>>> in  <<<} is)
+	\eit
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Misspellings}
+	
+\begin{lstlisting}
+maximize TotalUsage: sum {j in PROJECTS} usage[j] * Slect[j];	<-- oops!
+\end{lstlisting}
+
+
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+
+centrecounty.mod, line 15 (offset 459):
+	Slect is not defined
+context:  maximize TotalUsage: sum {j in PROJECTS} usage[j] *  >>> Slect[j]; <<< 
+\end{lstlisting}
+
+	\pause 
+	
+	\bit
+	\item Don't forget that AMPL is case-sensitive:
+	\eit
+	
+\begin{lstlisting}
+maximize TotalUsage: sum {j in PROJECTS} usage[j] * select[j];	<-- should be Select!
+\end{lstlisting}
+
+
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+
+centrecounty.mod, line 15 (offset 459):
+	select is not defined
+context:  maximize TotalUsage: sum {j in PROJECTS} usage[j] *  >>> select[j]; <<< 
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Missing Data}
+	
+\begin{lstlisting}
+param:		usage	cost	space :=
+park		600		50		8
+basketball	100		20		0
+rec			300		150		4 ;				<-- no pool!
+\end{lstlisting}
+
+
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+ampl: data centrecounty.dat;
+ampl: solve;
+Error executing "solve" command:
+error processing objective TotalUsage:
+	no value for usage['pool']
+\end{lstlisting}
+
+	\bit
+	\item Notice that the error doesn't occur until you \myinline{solve}
+	\eit
+	
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Missing Semicolon}
+	
+\begin{lstlisting}
+maximize TotalUsage: sum {j in PROJECTS} usage[j] * Select[j]	<-- no semicolon!
+\end{lstlisting}
+
+
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+
+centrecounty.mod, line 17 (offset 471):
+	syntax error
+context:  >>> subj  <<< to Budget: sum {j in PROJECTS} cost[j] * Select[j] <= budget;
+\end{lstlisting}
+
+	\bit
+	\item Notice that the error actually points to the {\em next} line, because that's when AMPL realizes something is wrong
+	\eit
+	
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Missing Semicolon}
+
+	\bit
+	\item If you forget the semicolon on the command line, AMPL just prompts you for it, like a parent waiting for a ``please'':
+	\eit
+	
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+ampl: data centrecounty.dat;
+ampl: solve
+ampl? 
+\end{lstlisting}
+
+	\bit
+	\item Then just type the \myinline{;} and you are forgiven:
+	\eit
+	
+\begin{lstlisting}
+ampl? ;
+CPLEX 12.8.0.0: optimal integer solution; objective 700
+0 MIP simplex iterations
+0 branch-and-bound nodes
+\end{lstlisting}
+
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%
+% WYNDOR GLASS
+%%%%%%%%%%%%%%%%%%%%%
+
+\section{Wyndor Glass Model}
+
+\begin{frame}[fragile]
+
+	\frametitle{Remember Wyndor Glass?}
+
+	\beq \begin{array}{lrcrcl}
+		\maximize & 3x_1 & + & 5x_2 & & \cr
+		\st & x_1 & & & \le & 4 \cr
+		& & & 2x_2 & \le & 12 \cr
+		& 3x_1 & + & 2x_2 & \le & 18 \cr
+		& x_1 & , & x_2 & \ge & 0 
+	\end{array} \eeq
+	
+	\bit
+	\item 2 products, 3 plants
+	\item Objective maximizes total profit
+	\item Constraints enforce plant capacities
+	\eit
+	
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Wyndor Glass in Algebraic Notation}
+
+	\bit
+	\item Sets:
+		\bit
+		\item $I$ = set of plants
+		\item $J$ = set of products
+		\eit
+	\item Parameters:
+		\bit
+		\item $r_j$ = profit per batch of product $j$ sold
+		\item $b_i$ = available hours at plant $i$
+		\item $a_{ij}$ = production time per batch of product $j$ made at plant $i$
+		\eit
+	\item Decision variables:
+		\bit
+		\item $x_j$ = number of batches of product $j$ produced
+		\eit
+	\eit
+	
+	{\footnotesize
+	\begin{alignat*}{2}
+	\text{maximize} \quad & \sum_{j\in J} r_jx_j && \\
+	\text{subject to} \quad & \sum_{j\in J} a_{ij}x_j \le b_i &\quad& \forall i\in I \\
+		& x_j \ge 0 && \forall j\in J
+	\end{alignat*}
+	}
+	
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{{\tt wyndor.mod}}
+
+	{\footnotesize
+	\begin{alignat*}{2}
+	\text{maximize} \quad & \sum_{j\in J} r_jx_j && \\
+	\text{subject to} \quad & \sum_{j\in J} a_{ij}x_j \le b_i &\quad& \forall i\in I \\
+		& x_j \ge 0 && \forall j\in J
+	\end{alignat*}
+	}
+	
+	\vspace{-1em}
+	
+\begin{lstlisting}
+set PLANTS;						# set of plants (I)
+set PRODUCTS;					# set of products (J)
+
+param profit {PRODUCTS};		# profit per unit of product j (r_j)
+param avail_hours {PLANTS};		# available hours at plant i (b_i)
+param hours_per_batch {PLANTS,PRODUCTS};
+								# num hours at plant i per batch of product j (a_ij)
+							
+var Produce {PRODUCTS} >= 0;	# num batches of product j to produce (x_j)
+
+maximize TotalProfit: sum {j in PRODUCTS} profit[j] * Produce[j];
+
+subj to PlantCapacity {i in PLANTS}: 
+	sum {j in PRODUCTS} hours_per_batch[i,j] * Produce[j] <= avail_hours[i];
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{{\tt wyndor.dat}}
+
+		\centerline{\scriptsize
+		\begin{tabular}{c|cc|c}
+		& \multicolumn{2}{c|}{Production Time} & \\
+		Plant & Product 1 & Product 2 & Available Hours \\ \hline
+		1 & 1 & 0 & 4 \\
+		2 & 0 & 2 & 12 \\
+		3 & 3 & 2 & 18 \\ \hline
+		Profit per Batch (x1000) & \$3 & \$5 & \\ \hline
+		\end{tabular}
+		}
+	
+	\vspace{1em}
+	
+\begin{lstlisting}
+set PLANTS := 1 2 3;		
+set PRODUCTS := 1 2;
+
+param profit :=
+	1	3
+	2	5 ;
+	
+param avail_hours :=
+	1	4
+	2	12
+	3	18 ;
+	
+param hours_per_batch :		<-- syntax for 2-index parameters in .dat file
+		1	2	:=
+	1	1	0
+	2	0	2
+	3	3	2 ;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Solving the Model}
+	
+\begin{lstlisting}
+ampl: model wyndor.mod;
+ampl: data wyndor.dat;
+ampl: solve;
+CPLEX 12.8.0.0: optimal solution; objective 36
+1 dual simplex iterations (0 in phase I)
+ampl: display Produce;
+Produce [*] :=
+1  2
+2  6
+;
+\end{lstlisting}
+
+	\bit
+	\item Our old friend $x^* = (2,6)$, $Z^* = 36$
+	\eit
+
+\end{frame}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%
+% OTHER STUFF
+%%%%%%%%%%%%%%%%%%%%%
+
+\section{Other Things to Know}
+
+\begin{frame}[fragile]
+
+	\frametitle{Solvers}
+	
+	\bit
+	\item AMPL can interface with {\em lots} of different {\bf solvers}
+	\item The solver is the code that actually does the optimization
+	\item The AMPL input to the solver (\myinline{.mod} and \myinline{.dat} files) and the AMPL output from the solver (e.g., \myinline{display Select;}) are the same, regardless of solver
+	\item For most purposes, CPLEX or Gurobi are sufficient
+		\bit
+		\item They can solve LPs, IPs, and other types of problems
+		\item But you need a license
+		\eit
+	\eit
+	
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Sets of Numbers}
+	
+	\bit
+	\item AMPL makes it easy to declare sets of numbers:
+		\bit
+		\item \myinline{set PERIODS := 1..20} $\implies$ \myinline{PERIODS = \{1, 2, ..., 20\}}
+		\item \myinline{set PERIODS := 5..50 by 5} $\implies$ \myinline{PERIODS = \{5, 10, ..., 50\}}
+		\eit
+	\item A common pattern is to declare the set {\em size} in the \myinline{.mod} file, declare the {\em set} based on the size also in the \myinline{.mod} file, and specify the size in the \myinline{.dat} file:
+	\eit
+
+\myinline{.mod}:	
+\begin{lstlisting}
+param T;
+
+set PERIODS := 1..T;
+\end{lstlisting}
+
+\myinline{.dat}:	
+\begin{lstlisting}
+param T := 20;
+\end{lstlisting}
+
+	\bit
+	\item {\bf Note:} ``\myinline{..}'' notation can only be used in \myinline{.mod} files, not \myinline{.dat}
+	\eit
+	
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Sets of Numbers}
+	
+	\bit
+	\item You can also use sets of numbers without explicitly declaring them as sets
+	\eit
+
+\myinline{.mod}:	
+\begin{lstlisting}
+param cost {1..T};
+var Produce {1..T};
+
+minimize TotalCost: sum {1..T} cost[t] * Produce[t];
+\end{lstlisting}
+
+\myinline{.dat}:	
+\begin{lstlisting}
+param T := 20;
+\end{lstlisting}
+
+	\bit
+	\item (But I find it cleaner to declare the sets)
+	\eit
+	
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Parameter Conditions}
+	
+	\bit
+	\item You can impose conditions on parameters in the \myinline{.mod} file
+	\item These are not constraints! They are just validation rules
+	\eit
+
+\myinline{.mod}:	
+\begin{lstlisting}
+param budget >= 0;
+param land_avail > 0;
+param is_open binary;
+param num_staff integer;
+param staffing_level >= 7;
+\end{lstlisting}
+
+\myinline{.dat}:	
+\begin{lstlisting}
+param budget := 200;
+param land_avail := -15;
+\end{lstlisting}
+
+\begin{lstlisting}
+ampl: model centrecounty.mod;
+ampl: data centrecounty.dat;
+ampl: solve;
+Error executing "solve" command:
+error processing param land_avail:
+	failed check: param land_avail = -15
+		is not > 0;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Set Operations}
+	
+	\bit
+	\item AMPL provides operators to work with sets:
+		\bit
+		\item \myinline{union} means $A \cup B$
+		\item \myinline{inter} means $A \cap B$
+		\item \myinline{diff} means $A \setminus B$
+		\item \myinline{symdiff} means symmetric difference: in $A$ or $B$ but not both
+		\item \myinline{cross} means cross product (Cartesian product): pairs $(a,b)$ with $a\in A$, $b\in B$
+		\eit
+	\eit
+
+\begin{lstlisting}
+set SUPPLIERS;
+set FACTORIES;
+set NODES = SUPPLIERS union FACTORIES;
+set EXTERNAL_SUPPLIERS = SUPPLIERS diff FACTORIES;
+set LINKS = SUPPLIERS cross FACTORIES;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{{\tt .run} Files}
+	
+	\bit
+	\item If you find yourself repeating the same commands over and over again...
+	\item ...use a \myinline{.run} file!
+	\item A \myinline{.run} file is a script consisting of standard AMPL commands
+	\eit
+
+\myinline{wyndor.run}:
+\begin{lstlisting}
+reset;
+model wyndor.mod;
+data wyndor.dat;
+option solver cplex;
+solve;
+display Produce;
+\end{lstlisting}
+
+	\bit
+	\item Then, run your file from the command line:
+	\eit
+
+\begin{lstlisting}
+ampl: include wyndor.run;
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{{\tt .run} Files}
+	
+	\bit
+	\item You can also use \myinline{for}, \myinline{let}, \myinline{printf}, etc.
+	\eit
+
+%\myinline{wyndor.run}:
+\begin{lstlisting}
+reset;
+model wyndor.mod;
+data wyndor.dat;
+option solver cplex;
+
+set HOURS_TO_TEST := avail_hours[3] .. avail_hours[3] + 10 by 2;
+for {h in HOURS_TO_TEST} {
+	let avail_hours[3] := h;
+	solve;
+	printf "avail_hours[3] = %2d ==> optimal profit = %6.2f\n", h, TotalProfit;
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+ampl: include wyndor.run;
+CPLEX 12.8.0.0: optimal solution; objective 36
+1 dual simplex iterations (0 in phase I)
+avail_hours[3] = 18 ==> optimal profit =  36.00
+<-- suppressing further CPLEX output... -->
+avail_hours[3] = 20 ==> optimal profit =  38.00
+avail_hours[3] = 22 ==> optimal profit =  40.00
+avail_hours[3] = 24 ==> optimal profit =  42.00
+avail_hours[3] = 26 ==> optimal profit =  42.00
+avail_hours[3] = 28 ==> optimal profit =  42.00
+\end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{{\tt .run} Files}
+	
+	\bit
+	\item \myinline{if-then-else} conditions, too:
+	\eit
+
+%\myinline{wyndor.run}:
+\begin{lstlisting}
+...
+for {h in HOURS_TO_TEST} {
+	let avail_hours[3] := h;
+	solve;
+	if Produce[1] >= 3 then 
+		printf "avail_hours[3] = %2d ==> producing >= 3 batches of product 1\n", h;
+	else 
+		printf "avail_hours[3] = %2d ==> producing <3 batches of product 1\n", h;
+}
+\end{lstlisting}
+
+\begin{lstlisting}
+CPLEX 12.8.0.0: optimal solution; objective 36
+1 dual simplex iterations (0 in phase I)
+avail_hours[3] = 18 ==> producing <3 batches of product 1
+<-- suppressing further CPLEX output... -->
+avail_hours[3] = 20 ==> producing <3 batches of product 1
+avail_hours[3] = 22 ==> producing >= 3 batches of product 1
+avail_hours[3] = 24 ==> producing >= 3 batches of product 1
+avail_hours[3] = 26 ==> producing >= 3 batches of product 1
+avail_hours[3] = 28 ==> producing >= 3 batches of product 1
+\end{lstlisting}
+
+\end{frame}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%
+% YOUR TURN
+%%%%%%%%%%%%%%%%%%%%%
+
+\section{Your Turn}
+
+
+\begin{frame}[fragile]
+
+	\frametitle{Your Turn: Fixed-Charge Problem}
+
+	\bit
+	\item $N$ products we can manufacture
+	\item Product $j$:
+		\bit
+		\item Incurs a fixed cost $K_j$ if we manufacture it
+		\item Incurs a variable cost $C_j$ per unit manufactured
+		\item Earns a profit $p_j$ per unit sold
+		\item Has a demand potential $d_j$
+		\eit
+	\item $M$ raw materials
+	\item Each unit of product $j$ manufactured requires $a_{ij}$ units of raw material $i$
+	\item $b_i$ units of raw material $i$ are available
+	\item Goal: select  product mix to maximize net profit
+	\eit
+	
+	
+\end{frame}
+	
+	
+	
+\begin{frame}[fragile]
+
+	\frametitle{Your Turn: Fixed-Charge Problem}
+	
+	{\footnotesize
+	\begin{alignat*}{2}
+	\text{maximize} \quad & \sum_{j=1}^N p_jx_j - \sum_{j=1}^N (K_j\delta_j + C_jx_j) && \\
+	\text{subject to} \quad & \sum_{j=1}^N a_{ij}x_j \le b_i && \forall i=1,\ldots,M \\
+		& x_j \le d_j\delta_j && \forall j=1,\ldots,N \\
+		& x_j \ge 0 && \forall j=1,\ldots,N \\
+		& \delta_j \in \{0,1\} && \forall j=1,\ldots,N
+	\end{alignat*}
+	}
+
+	\vspace{1em}
+	
+	{\small {\em Source}: Ravindran, Griffin, and Prabhu, {\em Service Systems Engineering and Management}, CRC Press, 2018.}
+	
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{Your Turn: Fixed-Charge Problem}
+
+	\bit
+	\item Use the following data:
+	\eit
+	
+		\vspace{1em}
+		
+		\centerline{\scriptsize
+		\begin{tabular}{c|cccc|c}
+		& \multicolumn{4}{c|}{Resources Needed ($a_{ij}$)} & \\
+		Resource & Prod.\ 1 & Prod.\ 2 & Prod.\ 3 & Prod.\ 4 & \# Available ($b_i$) \\ \hline
+		1 & 4 & 1 & 0 & 2 & 400 \\
+		2 & 0 & 2 & 3 & 2 & 600 \\
+		3 & 1 & 1 & 1 & 1 & 300 \\ \hline
+		Fixed cost ($K_j$) & 100 & 150 & 50 & 100 \\ 
+		Variable cost ($C_j$) & 10 & 10 & 40 & 30 \\
+		Sales price ($p_j$) & 22 & 30 & 18 & 45 \\
+		Sales potential ($d_j$) & 100 & 75 & 140 & 60 \\ \hline
+		\end{tabular}
+		}
+	
+\end{frame}
+
+\begin{frame}
+	\frametitle{This Slide Intentionally Left Blank...}
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{My {\tt .mod} File}
+	
+	
+\begin{lstlisting}
+param num_resources;					# number of resources (M)
+param num_products;						# number of products (N)
+
+set RESOURCES := 1..num_resources;		# set of resources
+set PRODUCTS := 1..num_products;		# set of products
+
+param fixed_cost {PRODUCTS};			# fixed cost (K_j)
+param var_cost {PRODUCTS};				# variable cost (C_j)
+param sales_price {PRODUCTS};			# sales price (p_j)
+param sales_potential {PRODUCTS};		# sales potential (d_j)
+param avail {RESOURCES};				# resource availability (b_i)
+param needs {RESOURCES, PRODUCTS};		# units of resource needed for product (a_ij)
+
+var ProduceAmt {PRODUCTS} >= 0;			# num units of product to produce (x_j)
+var Produce {PRODUCTS} binary;			# 0/1 if we produce/don't produce (delta_j)
+
+maximize Profit:
+	sum {j in PRODUCTS} sales_price[j] * ProduceAmt[j] 
+	- sum {j in PRODUCTS} (fixed_cost[j] * Produce[j] + var_cost[j] * ProduceAmt[j]);
+	
+subject to Supply {i in RESOURCES}:
+	sum {j in PRODUCTS} needs[i,j] * ProduceAmt[j] <= avail[i];
+	
+subject to LinkingAndSalesPotential {j in PRODUCTS}:
+	ProduceAmt[j] <= sales_potential[j] * Produce[j];
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{My {\tt .dat} File}
+	
+	
+\begin{lstlisting}
+param num_resources := 3;
+param num_products := 4;
+
+param:	fixed_cost	var_cost	sales_price	sales_potential :=
+	1	100			10			22			100
+	2	150			10			30			75
+	3	50			40			18			140
+	4	100			30			45			60 ;
+	
+param avail :=
+	1	400
+	2	600
+	3	300 ;
+	
+param needs :
+		1	2	3	4	:=
+	1	4	1	0	2
+	2	0	2	3	2
+	3	1	1	1	1 ;
+\end{lstlisting}
+
+\end{frame}
+
+\begin{frame}[fragile]
+
+	\frametitle{My AMPL Transcript}
+	
+	
+\begin{lstlisting}
+ampl: model fixedcharge.mod;
+ampl: data fixedcharge.dat;
+ampl: solve;
+CPLEX 12.8.0.0: optimal integer solution; objective 2665
+0 MIP simplex iterations
+0 branch-and-bound nodes
+absmipgap = 4.54747e-13, relmipgap = 1.70637e-16
+ampl: display Produce;
+Produce [*] :=
+1  1
+2  1
+3  0
+4  1
+;
+
+ampl: display ProduceAmt;
+ProduceAmt [*] :=
+1  51.25
+2  75
+3   0
+4  60
+;
+\end{lstlisting}
+
+	\bit
+	\item So: We produce products 1, 2, and 4, with $x^* = (51.25,75,0,60)$ and an optimal profit of 2665
+	\eit
+
+\end{frame}
+
+
+
+\end{document}

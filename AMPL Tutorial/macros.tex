@@ -1,0 +1,131 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Headers and macros for slides for ISE 240 (Intro to Operations Research)
+% Based on Hiller and Lieberman textbook, "Introduction to Operations Research" 
+% Slides developed by Prof. Larry Snyder, Lehigh University
+%
+% Please do not distribute LaTeX source code for slides without prior permission from the author
+% Contact him at larry.snyder@lehigh.edu or http://coral.ie.lehigh.edu/~larry
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\documentclass{beamer} 
+%\documentclass[handout]{beamer}
+
+\usepackage{pgf,pgfarrows,pgfnodes,pgfautomata,pgfheaps,pgfshade}
+\usepackage{amsmath,amssymb}
+\usepackage[latin1]{inputenc}
+\usepackage{colortbl}
+\usepackage[english]{babel}
+\usepackage[normalem]{ulem} % for strikethrough font
+
+\usepackage{tikz}
+\usetikzlibrary{snakes}
+\usetikzlibrary{decorations}
+\usetikzlibrary{calc}
+\usepgflibrary{shapes.geometric}
+\usetikzlibrary{intersections}
+\usetikzlibrary{positioning}
+
+\usepackage{pgfplots}
+\usepgfplotslibrary{fillbetween}
+
+
+\usepackage{graphicx}
+\usepackage[breakable]{tcolorbox}
+\usepackage{alltt}
+
+\usepackage{inconsolata} % fixed-width font for tt
+
+% listings package
+\usepackage{listings}
+\lstset{% set up for AMPL
+	basicstyle=\tiny\ttfamily,
+	keywordstyle=\color{purple},
+	commentstyle=\color{ForestGreen},
+	backgroundcolor=\color{blue!5},
+	frame=lines,
+	morecomment=[l]{\#},
+	morecomment=[l][\color{BrickRed}]{<--}, % not really a comment, just for pointing things out on the slides
+	morekeywords={param, var, set, maximize, minimize, sum, subject, subj, to, binary, model, data, solve, union, inter, diff, symdiff, cross, reset, option, display, include, printf, let, for, if, then, else},
+	sensitive=true,
+	tabsize=4,
+}
+\newcommand{\myinline}[1]{\lstinline[basicstyle=\small\ttfamily]!#1!}
+
+\usepackage{beamerthemetree} 			% choose beamer theme
+
+\input{dvipsnam.def}				% color definitions
+
+\beamertemplatenavigationsymbolsempty		% turn off navigation symbols
+
+\usefoottemplate{\tinycolouredline{white}{\insertshorttitle\hfill\insertframenumber}}
+						% insert footer: date and page number
+
+\beamerboxesdeclarecolorscheme{allblue}{structure!75!black}{structure!75!black}
+\beamerboxesdeclarecolorscheme{twotone}{structure!75!black}{structure!10!averagebackgroundcolor}
+						% define color schemes for beamer boxes
+						
+\setcounter{MaxMatrixCols}{20}			% reset maximum # of columns in matrix environment
+
+
+% internal comments -- to suppress, comment out first line below and un-comment second line
+%\newcommand{\comment}[1]{\textcolor{red}{\bf [#1]}}
+%\newcommand{\comment}[1]{}
+
+
+% environment for code examples
+\newenvironment{mycode}{\vspace{0em}\begin{tcolorbox}[breakable,boxrule=0.25mm]\begin{alltt}}{\end{alltt}\end{tcolorbox}\vspace{0em}}
+
+
+
+% environments
+\newcommand{\beq}{\begin{equation*}}
+\newcommand{\eeq}{\end{equation*}}
+\newcommand{\bit}{\begin{itemize}}
+\newcommand{\eit}{\end{itemize}}
+\newcommand{\ben}{\begin{enumerate}}
+\newcommand{\een}{\end{enumerate}}
+
+% LP text
+\newcommand{\minimize}{\text{minimize}}
+\newcommand{\maximize}{\text{maximize}}
+\newcommand{\st}{\text{subject to}}
+\newcommand{\shortmin}{\text{min}}
+\newcommand{\shortmax}{\text{max}}
+\newcommand{\shortst}{\text{s.t.}}
+\newcommand{\primal}{\ensuremath{(\text{P})}}
+\newcommand{\dual}{\ensuremath{(\text{D})}}
+
+% math shortcuts
+\newcommand{\smfrac}[2]{\textstyle{\frac{#1}{#2}}}
+\newcommand{\artvar}[1]{\bar{x}_{#1}}
+\newcommand{\matname}[1]{\mathbf{#1}}
+\newcommand{\mymat}[1]{\left[\begin{matrix} #1 \end{matrix}\right]}
+\newcommand{\matA}{\matname{A}}
+\newcommand{\matAinv}{\matA^{-1}}
+\newcommand{\matx}{\matname{x}}
+\newcommand{\matb}{\matname{b}}
+\newcommand{\matI}{\matname{I}}
+\newcommand{\maty}{\matname{y}}
+\newcommand{\matnull}{\matname{0}}
+\newcommand{\matc}{\matname{c}}
+\newcommand{\matB}{\matname{B}}
+\newcommand{\matBinv}{\matB^{-1}}
+\newcommand{\pijn}[1]{p_{ij}^{(#1)}}
+\newcommand{\matP}{\matname{P}}
+\newcommand{\matPn}[1]{\matP^{(#1)}}
+\newcommand{\liminfty}{\lim_{n\rightarrow\infty}}
+
+% variance
+\newcommand{\var}{\text{Var}}
+\newcommand{\cov}{\text{Cov}}
+
+% font styles
+\newcommand{\vocab}[1]{\textcolor{Blue}{\bf #1}}	% for vocabulary words
+\newcommand{\basic}[1]{\textcolor{Red}{#1}}		% for basic variables
+
+% Beamer boxes
+\newcommand{\boxtext}[1]{\begin{beamerboxesrounded}[scheme=allblue]{}{\textcolor{White}{#1}}\end{beamerboxesrounded}}
+\newcommand{\boxtexttitle}[2]{\begin{beamerboxesrounded}[scheme=twotone]{\textcolor{White}{#1}}{#2}\end{beamerboxesrounded}}
